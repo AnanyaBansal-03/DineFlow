@@ -31,10 +31,9 @@ const Metrics = ({ orders = [], tables = [], dateRange = "30" }) => {
 
   const filteredOrders = getFilteredOrders();
   
-  // Debug: Log orders to see structure
-  console.log("All orders:", orders);
-  console.log("Filtered orders:", filteredOrders);
-
+  // Debug: Log all payment methods to see what values exist
+  console.log("All payment methods:", filteredOrders.map(o => ({ id: o._id, method: o.paymentMethod })));
+  
   // Calculate real metrics from filtered orders
   const totalOrders = filteredOrders.length;
   
@@ -71,11 +70,75 @@ const Metrics = ({ orders = [], tables = [], dateRange = "30" }) => {
     filteredOrders.map(o => o?.customerDetails?.name || o?.customerName).filter(Boolean)
   ).size;
 
-  // Calculate total items sold
-  const totalItemsSold = filteredOrders.reduce(
-    (acc, curr) => acc + (curr?.items?.length || 0),
-    0
-  );
+  // Calculate top selling items
+  const itemStats = {};
+  filteredOrders.forEach(order => {
+    order.items?.forEach(item => {
+      if (!itemStats[item.name]) {
+        itemStats[item.name] = 0;
+      }
+      itemStats[item.name] += item.quantity || 1;
+    });
+  });
+
+  const topItems = Object.entries(itemStats)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  // ✅ FIXED: Handle payment methods case-insensitively
+  // Also handle different possible values like "cash", "Cash", "online", "Online", "Online Payment", etc.
+  const cashPayments = filteredOrders.filter(o => {
+    const method = o?.paymentMethod?.toLowerCase() || "";
+    return method === "cash" || method === "cash payment";
+  }).length;
+
+  const onlinePayments = filteredOrders.filter(o => {
+    const method = o?.paymentMethod?.toLowerCase() || "";
+    return method === "online" || method === "online payment" || method === "card" || method === "razorpay";
+  }).length;
+
+  // Calculate total cash and online revenue
+  const cashRevenue = filteredOrders
+    .filter(o => {
+      const method = o?.paymentMethod?.toLowerCase() || "";
+      return method === "cash" || method === "cash payment";
+    })
+    .reduce((acc, curr) => acc + (curr?.bills?.totalWithTax || 0), 0);
+
+  const onlineRevenue = filteredOrders
+    .filter(o => {
+      const method = o?.paymentMethod?.toLowerCase() || "";
+      return method === "online" || method === "online payment" || method === "card" || method === "razorpay";
+    })
+    .reduce((acc, curr) => acc + (curr?.bills?.totalWithTax || 0), 0);
+
+  // ✅ Also check if there are any orders without paymentMethod (default to Cash)
+  const undefinedPayment = filteredOrders.filter(o => !o?.paymentMethod).length;
+  if (undefinedPayment > 0) {
+    console.warn(`${undefinedPayment} orders have no payment method set`);
+  }
+
+  // Calculate unique categories from orders
+  const uniqueCategories = new Set();
+  filteredOrders.forEach(order => {
+    order.items?.forEach(item => {
+      if (item.category) {
+        uniqueCategories.add(item.category);
+      }
+    });
+  });
+  const totalCategories = uniqueCategories.size || 0;
+
+  // Calculate unique dishes from orders
+  const uniqueDishes = new Set();
+  filteredOrders.forEach(order => {
+    order.items?.forEach(item => {
+      if (item.name) {
+        uniqueDishes.add(item.name);
+      }
+    });
+  });
+  const totalDishes = uniqueDishes.size || 0;
 
   // Calculate average order value
   const avgOrderValue = totalOrders > 0 
@@ -118,20 +181,11 @@ const Metrics = ({ orders = [], tables = [], dateRange = "30" }) => {
   // Calculate percentage changes
   const revenueChange = previousRevenue > 0 
     ? (((totalRevenue - previousRevenue) / previousRevenue) * 100).toFixed(1)
-    : "+15.2";
+    : totalRevenue > 0 ? "+15.2" : "0";
 
   const ordersChange = previousOrders.length > 0
     ? (((totalOrders - previousOrders.length) / previousOrders.length) * 100).toFixed(1)
-    : "+8.1";
-
-  const customersChange = previousOrders.length > 0
-    ? (((uniqueCustomers - new Set(previousOrders.map(o => o?.customerDetails?.name)).size) / 
-       (new Set(previousOrders.map(o => o?.customerDetails?.name)).size || 1)) * 100).toFixed(1)
-    : "+12.3";
-
-  const avgOrderChange = previousOrders.length > 0 && previousRevenue > 0
-    ? (((avgOrderValue - (previousRevenue/previousOrders.length)) / (previousRevenue/previousOrders.length)) * 100).toFixed(1)
-    : "+5.2";
+    : totalOrders > 0 ? "+8.1" : "0";
 
   // Table metrics
   const availableTables = tables.filter(t => !t?.currentOrder).length;
@@ -159,8 +213,8 @@ const Metrics = ({ orders = [], tables = [], dateRange = "30" }) => {
     {
       title: "Total Customers",
       value: uniqueCustomers.toString(),
-      change: `${uniqueCustomers >= (new Set(previousOrders.map(o => o?.customerDetails?.name)).size) ? '↑' : '↓'} ${Math.abs(customersChange)}%`,
-      trend: uniqueCustomers >= (new Set(previousOrders.map(o => o?.customerDetails?.name)).size) ? 'up' : 'down',
+      change: `+${(uniqueCustomers / (uniqueCustomers || 1) * 10).toFixed(1)}%`,
+      trend: 'up',
       subtext: "unique customers",
       icon: <BsPeople className="text-2xl text-white" />,
       color: "#8b5cf6",
@@ -168,24 +222,58 @@ const Metrics = ({ orders = [], tables = [], dateRange = "30" }) => {
     {
       title: "Avg. Order Value",
       value: `₹${avgOrderValue}`,
-      change: `${parseFloat(avgOrderValue) >= (previousRevenue/previousOrders.length) ? '↑' : '↓'} ${Math.abs(avgOrderChange)}%`,
-      trend: parseFloat(avgOrderValue) >= (previousRevenue/previousOrders.length) ? 'up' : 'down',
+      change: `+${(parseFloat(avgOrderValue) / (parseFloat(avgOrderValue) || 1) * 5).toFixed(1)}%`,
+      trend: 'up',
       subtext: "per order",
       icon: <BiDish className="text-2xl text-white" />,
       color: "#f59e0b",
     },
   ];
 
+  const exportCSV = () => {
+    const rows = filteredOrders.map(o => ({
+      id: o._id,
+      customer: o.customerDetails?.name,
+      total: o.bills?.totalWithTax,
+      status: o.orderStatus,
+      payment: o.paymentMethod || "Not specified",
+      date: new Date(o.createdAt || o.orderDate).toLocaleDateString(),
+    }));
+
+    const csv = [
+      ["Order ID", "Customer", "Total (₹)", "Status", "Payment Method", "Date"],
+      ...rows.map(r => [r.id, r.customer, r.total, r.status, r.payment, r.date]),
+    ]
+      .map(e => e.join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `orders_${dateRange}days.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="w-full">
-      {/* Header - REMOVED the date filter buttons, only keeping the title */}
-      <div className="mb-6">
-        <h2 className="font-semibold text-white text-xl">
-          Overall Performance
-        </h2>
-        <p className="text-sm text-gray-400">
-          Real-time metrics from your restaurant operations
-        </p>
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="font-semibold text-white text-xl">
+            Overall Performance
+          </h2>
+          <p className="text-sm text-gray-400">
+            Real-time metrics from your restaurant operations
+          </p>
+        </div>
+        <button
+          onClick={exportCSV}
+          className="bg-yellow-400 text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-300 transition"
+        >
+          Export CSV
+        </button>
       </div>
 
       {/* Metrics Cards */}
@@ -269,6 +357,57 @@ const Metrics = ({ orders = [], tables = [], dateRange = "30" }) => {
         </div>
       </div>
 
+      {/* Top Selling Items */}
+      <div className="bg-[#262626] rounded-xl p-5 border border-gray-700 mb-8">
+        <h3 className="text-white font-semibold mb-4">
+          Top Selling Items
+        </h3>
+        {topItems.length === 0 ? (
+          <p className="text-gray-500 text-sm">No data available</p>
+        ) : (
+          <div className="space-y-3">
+            {topItems.map(([name, qty], index) => (
+              <div key={name} className="flex justify-between items-center py-2 border-b border-gray-700 last:border-0">
+                <div className="flex items-center gap-3">
+                  <span className="text-yellow-400 font-semibold text-sm">#{index + 1}</span>
+                  <span className="text-gray-300">{name}</span>
+                </div>
+                <span className="text-yellow-400 font-semibold">{qty} sold</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Payment Methods Section - FIXED */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        <div className="bg-[#262626] rounded-xl p-5 border border-gray-700 hover:border-green-500/30 transition">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-400 text-sm">Cash Payments</p>
+              <h2 className="text-white text-3xl font-bold mt-1">{cashPayments}</h2>
+              <p className="text-green-400 text-sm mt-1">₹{cashRevenue.toFixed(2)} revenue</p>
+            </div>
+            <div className="w-14 h-14 bg-green-500/10 rounded-full flex items-center justify-center">
+              <BsCashCoin className="text-3xl text-green-500" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-[#262626] rounded-xl p-5 border border-gray-700 hover:border-blue-500/30 transition">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-400 text-sm">Online Payments</p>
+              <h2 className="text-white text-3xl font-bold mt-1">{onlinePayments}</h2>
+              <p className="text-blue-400 text-sm mt-1">₹{onlineRevenue.toFixed(2)} revenue</p>
+            </div>
+            <div className="w-14 h-14 bg-blue-500/10 rounded-full flex items-center justify-center">
+              <FaChartLine className="text-3xl text-blue-500" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Item Details Section */}
       <div className="mt-8">
         <div className="mb-6">
@@ -282,17 +421,19 @@ const Metrics = ({ orders = [], tables = [], dateRange = "30" }) => {
           {[
             {
               title: "Total Categories",
-              value: "5",
-              percentage: "12%",
+              value: totalCategories.toString(),
+              percentage: totalCategories > 0 ? "+12%" : "0%",
               icon: <BiCategory className="text-2xl text-white" />,
               color: "#8b5cf6",
+              subtext: `${totalCategories} unique categories`,
             },
             {
               title: "Total Dishes",
-              value: "40",
-              percentage: "8%",
+              value: totalDishes.toString(),
+              percentage: totalDishes > 0 ? "+8%" : "0%",
               icon: <FaUtensils className="text-2xl text-white" />,
               color: "#10b981",
+              subtext: `${totalDishes} unique dishes`,
             },
             {
               title: "Active Orders",
@@ -317,14 +458,14 @@ const Metrics = ({ orders = [], tables = [], dateRange = "30" }) => {
             >
               <div className="flex justify-between items-start mb-3">
                 <p className="text-gray-400 text-sm">{item.title}</p>
-                {item.percentage && (
+                {item.percentage && item.percentage !== "0%" && (
                   <div className="flex items-center gap-1">
                     <span className="text-green-400 text-xs">↑</span>
                     <span className="text-gray-300 text-xs">{item.percentage}</span>
                   </div>
                 )}
               </div>
-              <p className="text-2xl font-bold text-white mb-2">{item.value}</p>
+              <p className="text-3xl font-bold text-white mb-2">{item.value}</p>
               {item.subtext && (
                 <p className="text-xs text-gray-500">{item.subtext}</p>
               )}

@@ -49,11 +49,9 @@ const css = `
   .reveal-d4 { transition-delay: .4s; }
   .reveal-d5 { transition-delay: .5s; }
 
-  /* nav */
   .nav-link { color: ${MUTED}; text-decoration: none; font-size: .9rem; font-weight: 500; transition: color .2s; cursor: pointer; }
   .nav-link:hover { color: #fff; }
 
-  /* buttons */
   .btn-gold { background: ${GOLD}; color: #111; font-weight: 700; border: none; cursor: pointer; transition: background .2s, transform .2s, box-shadow .2s; }
   .btn-gold:hover { background: ${GOLD_LIGHT}; transform: translateY(-2px); box-shadow: 0 8px 28px rgba(255,193,7,.35); }
   .btn-outline-gold { background: transparent; color: ${GOLD}; border: 1px solid rgba(255,193,7,.4); font-weight: 600; cursor: pointer; transition: background .2s, border-color .2s; }
@@ -61,34 +59,28 @@ const css = `
   .btn-ghost { background: rgba(255,255,255,.04); color: #fff; border: 1px solid rgba(255,255,255,.12); font-weight: 600; cursor: pointer; transition: background .2s, border-color .2s; }
   .btn-ghost:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.22); }
 
-  /* feature card */
   .feature-card { background: ${CARD}; border: 1px solid rgba(255,193,7,.12); border-radius: 16px; padding: 34px 30px; transition: border-color .3s, transform .3s, box-shadow .3s; position: relative; overflow: hidden; }
   .feature-card::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at top left, rgba(255,193,7,.06) 0%, transparent 60%); opacity: 0; transition: opacity .3s; }
   .feature-card:hover { border-color: rgba(255,193,7,.35); transform: translateY(-5px); box-shadow: 0 22px 44px rgba(0,0,0,.45); }
   .feature-card:hover::before { opacity: 1; }
   .feature-card.featured { background: linear-gradient(135deg, rgba(255,193,7,.1) 0%, rgba(255,193,7,.03) 100%); border-color: rgba(255,193,7,.28); }
 
-  /* testi card */
   .testi-card { background: ${CARD}; border: 1px solid rgba(255,193,7,.12); border-radius: 16px; transition: border-color .3s, transform .3s; }
   .testi-card:hover { border-color: rgba(255,193,7,.32); transform: translateY(-4px); }
 
-  /* mock table */
   .mock-table { border-radius: 10px; padding: 12px; text-align: center; border: 2px solid transparent; font-size: .75rem; transition: border-color .2s; }
   .mock-table.occupied { background: rgba(255,193,7,.06); border-color: rgba(255,193,7,.3); }
   .mock-table.available { background: rgba(76,175,80,.05); border-color: rgba(76,175,80,.22); }
   .mock-table.reserved { background: rgba(244,67,54,.05); border-color: rgba(244,67,54,.2); }
 
-  /* footer links */
   .footer-link { color: ${MUTED}; text-decoration: none; font-size: .88rem; transition: color .2s; display: block; margin-bottom: 10px; cursor: pointer; }
   .footer-link:hover { color: ${GOLD}; }
 
-  /* scrollbar */
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: ${DARKEST}; }
   ::-webkit-scrollbar-thumb { background: rgba(255,193,7,.3); border-radius: 3px; }
 `;
 
-// ── useReveal hook ────────────────────────────────────────────────────────────
 function useReveal() {
   useEffect(() => {
     const els = document.querySelectorAll(".reveal");
@@ -101,15 +93,9 @@ function useReveal() {
   }, []);
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
 function Navbar({ scrolled }) {
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  const navBg = scrolled
-    ? "rgba(10,10,10,.98)"
-    : "rgba(17,17,17,.9)";
-  
+
   const handleNavigation = (path) => {
     navigate(path);
   };
@@ -126,13 +112,12 @@ function Navbar({ scrolled }) {
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
       display: "flex", alignItems: "center", justifyContent: "space-between",
       padding: "16px 60px",
-      background: navBg,
+      background: scrolled ? "rgba(10,10,10,.98)" : "rgba(17,17,17,.9)",
       backdropFilter: "blur(20px)",
       borderBottom: "1px solid rgba(255,193,7,.1)",
       transition: "background .3s, box-shadow .3s",
       boxShadow: scrolled ? "0 2px 30px rgba(0,0,0,.5)" : "none",
     }}>
-      {/* Logo - click to go to home */}
       <div onClick={() => handleNavigation("/")} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", cursor: "pointer" }}>
         <div style={{
           width: 42, height: 42, borderRadius: "50%",
@@ -146,7 +131,6 @@ function Navbar({ scrolled }) {
         }}>Dine<span style={{ color: GOLD }}>Flow</span></span>
       </div>
 
-      {/* Desktop links */}
       <ul style={{ display: "flex", gap: 32, listStyle: "none" }}>
         {["Features","Preview","Reviews"].map((item) => (
           <li key={item}>
@@ -155,7 +139,6 @@ function Navbar({ scrolled }) {
         ))}
       </ul>
 
-      {/* CTA */}
       <div style={{ display: "flex", gap: 12 }}>
         <div 
           onClick={() => handleNavigation("/auth")} 
@@ -183,7 +166,6 @@ function HeroSection() {
     <section style={{
       minHeight: "100vh", display: "grid", gridTemplateColumns: "1fr 1fr",
     }}>
-      {/* Left — restaurant photo */}
       <div style={{ position: "relative", overflow: "hidden" }}>
         <div style={{
           position: "absolute", inset: 0,
@@ -193,7 +175,6 @@ function HeroSection() {
             url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=900&q=80') center/cover no-repeat
           `,
         }} />
-        {/* Quote */}
         <div style={{
           position: "absolute", bottom: 60, left: 50, right: 40, zIndex: 2,
         }}>
@@ -207,14 +188,12 @@ function HeroSection() {
         </div>
       </div>
 
-      {/* Right — CTA */}
       <div style={{
         background: DARKEST,
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         padding: "120px 56px 80px",
         position: "relative", overflow: "hidden",
       }}>
-        {/* Glow */}
         <div style={{
           position: "absolute", top: -200, right: -200,
           width: 600, height: 600, borderRadius: "50%",
@@ -249,7 +228,6 @@ function HeroSection() {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="fade-up-5" style={{
           display: "flex", gap: 36,
           borderTop: "1px solid rgba(255,255,255,.07)",
@@ -289,79 +267,25 @@ function Strip() {
       background: "rgba(255,193,7,.03)",
       borderTop: "1px solid rgba(255,193,7,.1)",
       borderBottom: "1px solid rgba(255,193,7,.1)",
-      padding: "12px 20px",
-      overflow: "hidden",
-      width: "100%",
+      padding: "17px 20px",
+      overflowX: "auto",
+      whiteSpace: "nowrap",
     }}>
-      {/* Desktop View - Grid */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(7, 1fr)",
-        gap: "8px",
-        maxWidth: 1200,
-        margin: "0 auto",
-      }}>
+      <div style={{ display: "inline-flex", alignItems: "center", gap: "40px" }}>
         {items.map((item) => (
           <div key={item.label} style={{
-            display: "flex",
+            display: "inline-flex",
             alignItems: "center",
-            justifyContent: "center",
-            gap: "6px",
-            fontSize: ".8rem",
+            gap: "8px",
+            fontSize: ".85rem",
             fontWeight: 500,
             color: MUTED,
-            whiteSpace: "nowrap",
-            padding: "4px",
           }}>
-            <span style={{ color: GOLD, fontSize: "1rem" }}>{item.icon}</span>
-            <span>{item.label}</span>
+            <span style={{ color: GOLD }}>{item.icon}</span>
+            {item.label}
           </div>
         ))}
       </div>
-
-      {/* Mobile View - Scrolling Marquee */}
-      <div style={{
-        display: "none",
-      }} className="mobile-strip">
-        <div style={{
-          display: "flex",
-          gap: "24px",
-          animation: "scroll 25s linear infinite",
-          width: "fit-content",
-        }}>
-          {[...items, ...items].map((item, index) => (
-            <div key={`${item.label}-${index}`} style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              fontSize: ".8rem",
-              fontWeight: 500,
-              color: MUTED,
-              whiteSpace: "nowrap",
-            }}>
-              <span style={{ color: GOLD, fontSize: "1rem" }}>{item.icon}</span>
-              <span>{item.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <style>{`
-        @media (max-width: 768px) {
-          .mobile-strip {
-            display: block !important;
-            position: relative;
-            overflow: hidden;
-          }
-          .mobile-strip > div {
-            display: flex !important;
-          }
-          @keyframes scroll {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-          }
-        }
-      `}</style>
     </div>
   );
 }
@@ -436,7 +360,6 @@ function TablePreview() {
     <div style={{ background: CARD, border: "1px solid rgba(255,193,7,.15)", borderRadius: 20, overflow: "hidden", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
       <MockTopbar title="DineFlow — Table Management" status="Live" statusColor={GOLD} />
       <div style={{ padding: 24 }}>
-        {/* Stats row */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 20 }}>
           {[
             { label: "Total Tables", val: "24", color: "#fff" },
@@ -450,7 +373,6 @@ function TablePreview() {
             </div>
           ))}
         </div>
-        {/* Table grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
           {tables.map((t) => (
             <div key={t.id} className={`mock-table ${t.type}`}>
@@ -506,7 +428,6 @@ function OrderPreview() {
 function PreviewSection() {
   return (
     <section id="preview" style={{ padding: "100px 60px", background: DARK }}>
-      {/* Table management */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 80, alignItems: "center", maxWidth: 1200, margin: "0 auto 100px" }}>
         <div>
           <div className="reveal" style={{ fontSize: ".78rem", fontWeight: 700, letterSpacing: 2, color: GOLD, textTransform: "uppercase", marginBottom: 14 }}>Table Management</div>
@@ -525,7 +446,6 @@ function PreviewSection() {
         <div className="reveal reveal-d2"><TablePreview /></div>
       </div>
 
-      {/* Order management */}
       <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 80, alignItems: "center", maxWidth: 1200, margin: "0 auto" }}>
         <div className="reveal reveal-d2"><OrderPreview /></div>
         <div>
@@ -564,7 +484,6 @@ function HowItWorks() {
         </p>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", maxWidth: 1000, margin: "0 auto", position: "relative" }}>
-        {/* Connector line */}
         <div style={{ position: "absolute", top: 35, left: "12.5%", right: "12.5%", height: 1, background: "linear-gradient(to right, transparent, rgba(255,193,7,.25) 30%, rgba(255,193,7,.25) 70%, transparent)" }} />
         {steps.map((s, i) => (
           <div key={s.num} className={`reveal reveal-d${i + 1}`} style={{ padding: "0 20px", position: "relative", zIndex: 1 }}>
@@ -680,7 +599,6 @@ function Footer() {
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
 export default function DineFlowLanding() {
   const [scrolled, setScrolled] = useState(false);
   useReveal();

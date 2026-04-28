@@ -8,6 +8,8 @@ const config = Object.freeze({
     // razorpayKeyId: process.env.RAZORPAY_KEY_ID,
     // razorpaySecretKey: process.env.RAZORPAY_KEY_SECRET,
     // razorpyWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET
+    razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+    razorpaySecretKey: process.env.RAZORPAY_KEY_SECRET,
 });
 
 module.exports = config;

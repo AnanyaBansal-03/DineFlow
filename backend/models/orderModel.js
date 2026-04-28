@@ -30,12 +30,23 @@ const orderSchema = new mongoose.Schema(
       totalWithTax: { type: Number, default: 0 },
     },
 
-    // 🔥 FIXED ITEMS STRUCTURE
     items: [orderItemSchema],
 
     table: { type: mongoose.Schema.Types.ObjectId, ref: "Table" },
 
-    paymentMethod: String,
+    // ✅ FIXED
+    paymentMethod: {
+      type: String,
+      enum: ["Cash", "Online"],
+      default: "Cash",
+    },
+
+    // ✅ NEW FIELD
+    paymentStatus: {
+      type: String,
+      enum: ["Pending", "Paid"],
+      default: "Pending",
+    },
 
     paymentData: {
       razorpay_order_id: String,

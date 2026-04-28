@@ -38,16 +38,12 @@ const userSchema = new mongoose.Schema({
         required: true,
         validate: {
             validator: function (v) {
-                // Password must have:
-                // - At least 8 characters
-                // - At least one uppercase letter
-                // - At least one lowercase letter
-                // - At least one number
-                // - At least one special character
-                const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+                const passwordRegex =
+                /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
                 return passwordRegex.test(v);
             },
-            message : "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character!"
+            message :
+            "Password must be at least 8 characters long and contain uppercase, lowercase, number and special character!"
         }
     },
 
@@ -55,24 +51,24 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
         enum: {
-            values: ['Waiter', 'Cashier', 'Admin'],
+            values: ['Waiter', 'Kitchen', 'Admin'],
             message: '{VALUE} is not a valid role'
         }
     }
 }, { timestamps : true });
 
-userSchema.pre('save', async function (next) {
-    if(!this.isModified('password')){
-        return next();
+
+/* PASSWORD HASHING MIDDLEWARE */
+userSchema.pre('save', async function () {
+
+    if (!this.isModified('password')) {
+        return;
     }
 
-    try {
-        const salt = await bcrypt.genSalt(10);
-        this.password = await bcrypt.hash(this.password, salt);
-        next();
-    } catch (error) {
-        next(error);
-    }
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+
 });
+
 
 module.exports = mongoose.model("User", userSchema);

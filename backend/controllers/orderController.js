@@ -3,6 +3,14 @@ const Order = require("../models/orderModel");
 const Table = require("../models/tableModel");
 const mongoose = require("mongoose");
 
+// Socket.io instance
+let io;
+
+/* ================= SET SOCKET IO INSTANCE ================= */
+const setIo = (socketIo) => {
+  io = socketIo;
+};
+
 /* ================= HELPER: RECALCULATE BILL ================= */
 
 const recalculateBill = (order) => {
@@ -24,7 +32,7 @@ const recalculateBill = (order) => {
 
 const addOrder = async (req, res, next) => {
   try {
-    const { tableId, customerDetails, orderStatus, items } = req.body;
+    const { tableId, customerDetails, orderStatus, items, paymentMethod } = req.body;
 
     if (!tableId) {
       return next(createHttpError(400, "Table ID is required"));
@@ -49,6 +57,7 @@ const addOrder = async (req, res, next) => {
       orderStatus,
       items: items || [],
       table: tableId,
+      paymentMethod: paymentMethod || "Cash",
     });
 
     recalculateBill(order);
@@ -57,6 +66,12 @@ const addOrder = async (req, res, next) => {
 
     table.currentOrder = order._id;
     await table.save();
+
+    // 🚀 EMIT REAL-TIME EVENT - New order created
+    if (io) {
+      io.emit("new_order", order);
+      io.emit("orders_updated");
+    }
 
     res.status(201).json({
       success: true,
@@ -153,6 +168,12 @@ const addItemToOrder = async (req, res, next) => {
 
     await order.save();
 
+    // 🚀 EMIT REAL-TIME EVENT - Order items updated
+    if (io) {
+      io.emit("order_updated", order);
+      io.emit("orders_updated");
+    }
+
     res.status(200).json({
       success: true,
       data: order,
@@ -202,6 +223,12 @@ const decreaseItemQuantity = async (req, res, next) => {
 
     await order.save();
 
+    // 🚀 EMIT REAL-TIME EVENT - Order items updated
+    if (io) {
+      io.emit("order_updated", order);
+      io.emit("orders_updated");
+    }
+
     res.status(200).json({
       success: true,
       data: order,
@@ -212,11 +239,11 @@ const decreaseItemQuantity = async (req, res, next) => {
   }
 };
 
-/* ================= UPDATE ORDER STATUS ================= */
+/* ================= UPDATE ORDER (STATUS, PAYMENT METHOD, PAYMENT STATUS) ================= */
 
 const updateOrder = async (req, res, next) => {
   try {
-    const { orderStatus } = req.body;
+    const { orderStatus, paymentStatus, paymentMethod } = req.body;
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -229,18 +256,89 @@ const updateOrder = async (req, res, next) => {
       return next(createHttpError(404, "Order not found"));
     }
 
-    order.orderStatus = orderStatus;
+    // Update orderStatus if provided
+    if (orderStatus) {
+      order.orderStatus = orderStatus;
+    }
+    
+    // Update paymentStatus if provided
+    if (paymentStatus) {
+      order.paymentStatus = paymentStatus;
+    }
+    
+    // Update paymentMethod if provided
+    if (paymentMethod) {
+      order.paymentMethod = paymentMethod;
+    }
+    
     await order.save();
 
-    if (orderStatus === "Completed") {
+    // Free up table when order is completed
+    const finalStatus = orderStatus || order.orderStatus;
+    if (finalStatus === "Completed") {
       await Table.findByIdAndUpdate(order.table, {
         currentOrder: null,
       });
     }
 
+    // 🚀 EMIT REAL-TIME EVENT - Order status changed
+    if (io) {
+      io.emit("order_updated", order);
+      io.emit("orders_updated");
+      
+      // Specific event for kitchen when order is ready
+      if (orderStatus === "Ready") {
+        io.emit("order_ready", order);
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: "Order updated successfully",
+      data: order,
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+/* ================= UPDATE PAYMENT METHOD ================= */
+
+const updatePaymentMethod = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { paymentMethod, paymentStatus } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return next(createHttpError(404, "Invalid ID"));
+    }
+
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return next(createHttpError(404, "Order not found"));
+    }
+
+    if (paymentMethod) {
+      order.paymentMethod = paymentMethod;
+    }
+    
+    if (paymentStatus) {
+      order.paymentStatus = paymentStatus;
+    }
+
+    await order.save();
+
+    // 🚀 EMIT REAL-TIME EVENT
+    if (io) {
+      io.emit("order_updated", order);
+      io.emit("orders_updated");
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Payment method updated successfully",
       data: order,
     });
 
@@ -271,6 +369,12 @@ const deleteOrder = async (req, res, next) => {
 
     await order.deleteOne();
 
+    // 🚀 EMIT REAL-TIME EVENT - Order deleted
+    if (io) {
+      io.emit("order_deleted", id);
+      io.emit("orders_updated");
+    }
+
     res.status(200).json({
       success: true,
       message: "Order deleted & table released",
@@ -281,6 +385,8 @@ const deleteOrder = async (req, res, next) => {
   }
 };
 
+/* ================= EXPORTS ================= */
+
 module.exports = {
   addOrder,
   getOrderById,
@@ -289,4 +395,6 @@ module.exports = {
   deleteOrder,
   addItemToOrder,
   decreaseItemQuantity,
+  updatePaymentMethod,
+  setIo, // Add this so server can set socket instance
 };

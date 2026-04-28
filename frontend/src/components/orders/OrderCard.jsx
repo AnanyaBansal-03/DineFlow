@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   FaCheckDouble,
   FaLongArrowAltRight,
@@ -8,15 +8,36 @@ import { formatDateAndTime, getAvatarName } from "../../utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateOrderStatus } from "../../https";
 import { useNavigate } from "react-router-dom";
+import { useSocket } from "../../context/SocketContext";
 
 const OrderCard = ({ order }) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { socket } = useSocket();
 
   const customerName = order?.customerDetails?.name || "N/A";
   const tableNo = order?.table?.tableNo || "N/A";
   const itemsCount = order?.items?.length || 0;
   const total = order?.bills?.totalWithTax || 0;
+
+  // Listen for real-time updates for this specific order
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleOrderUpdate = (updatedOrder) => {
+      if (updatedOrder._id === order._id) {
+        // Invalidate and refetch this specific order
+        queryClient.invalidateQueries({ queryKey: ["orders"] });
+        queryClient.invalidateQueries({ queryKey: ["order", order._id] });
+      }
+    };
+
+    socket.on("order_updated", handleOrderUpdate);
+
+    return () => {
+      socket.off("order_updated", handleOrderUpdate);
+    };
+  }, [socket, order._id, queryClient]);
 
   /* ================= STATUS UPDATE ================= */
 
@@ -32,13 +53,6 @@ const OrderCard = ({ order }) => {
     statusMutation.mutate({
       orderId: order._id,
       orderStatus: "Ready",
-    });
-  };
-
-  const handleComplete = () => {
-    statusMutation.mutate({
-      orderId: order._id,
-      orderStatus: "Completed",
     });
   };
 
@@ -80,16 +94,13 @@ const OrderCard = ({ order }) => {
 
   return (
     <div className="bg-[#262626] rounded-xl border border-gray-700 hover:border-gray-600 transition overflow-hidden">
-      {/* Card Content */}
       <div className="p-4">
-        {/* Header with Avatar and Customer Info */}
+        {/* Header */}
         <div className="flex gap-3">
-          {/* Avatar */}
           <div className="bg-[#f6b100] w-12 h-12 rounded-lg flex items-center justify-center text-black font-bold text-lg flex-shrink-0">
             {getAvatarName(customerName)}
           </div>
 
-          {/* Customer Details */}
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-start">
               <div>
@@ -105,84 +116,88 @@ const OrderCard = ({ order }) => {
                   <span className="text-white font-medium">{tableNo}</span>
                 </div>
               </div>
-              
-              {/* Status Badge - Positioned top right */}
-              <div className="ml-2">
-                {getStatusBadge()}
-              </div>
+
+              <div className="ml-2">{getStatusBadge()}</div>
             </div>
           </div>
         </div>
 
-        {/* Order Details - Only show for non-completed orders or if we want to show details */}
-        {(order?.orderStatus !== "Completed") ? (
+        {/* ACTIVE ORDERS */}
+        {order?.orderStatus !== "Completed" ? (
           <>
             <div className="mt-4 pt-3 border-t border-gray-700">
-              <div className="flex justify-between items-center text-xs text-gray-400">
+              <div className="flex justify-between text-xs text-gray-400">
                 <span>{formatDateAndTime(order?.orderDate)}</span>
                 <span className="bg-[#1f1f1f] px-2 py-1 rounded-md">
-                  {itemsCount} {itemsCount === 1 ? 'item' : 'items'}
+                  {itemsCount} {itemsCount === 1 ? "item" : "items"}
                 </span>
               </div>
-              
-              <div className="flex justify-between items-center mt-3">
-                <span className="text-gray-300 text-sm font-medium">Total</span>
-                <span className="text-white font-bold">₹{Number(total).toFixed(2)}</span>
+
+              <div className="flex justify-between mt-3">
+                <span className="text-gray-300 text-sm font-medium">
+                  Total
+                </span>
+                <span className="text-white font-bold">
+                  ₹{Number(total).toFixed(2)}
+                </span>
               </div>
             </div>
 
-            {/* Action Buttons - For non-completed orders */}
+            {/* ACTION BUTTONS */}
             <div className="mt-4 space-y-2">
-              {/* Continue Order - Always visible for non-completed */}
+              {/* Continue Order */}
               <button
                 onClick={() => navigate(`/orders/${order._id}`)}
-                className="w-full bg-gray-700 text-gray-400 text-sm font-medium py-2.5 rounded-lg"
+                className="w-full bg-gray-700 text-gray-400 text-sm py-2.5 rounded-lg hover:bg-gray-600 transition"
               >
                 Continue Order
               </button>
 
-              {/* Status-specific action buttons */}
+              {/* In Progress → Ready */}
               {order?.orderStatus === "In Progress" && (
                 <button
                   onClick={handleReady}
-                  className="w-full bg-yellow-700 hover:bg-yellow-700 text-gray-400 text-sm font-medium py-2.5 rounded-lg"
+                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-black text-sm py-2.5 rounded-lg transition"
                 >
                   Mark as Ready
                 </button>
               )}
 
+              {/* Ready → Payment */}
               {order?.orderStatus === "Ready" && (
                 <button
-                  onClick={handleComplete}
-                  className="w-full bg-green-500 hover:bg-green-700 text-gray-400 text-sm font-medium py-2.5 rounded-lg"
+                  onClick={() => navigate(`/orders/${order._id}`)}
+                  className="w-full bg-green-500 hover:bg-green-600 text-black text-sm py-2.5 rounded-lg transition"
                 >
-                  Complete Order
+                  Proceed to Payment
                 </button>
               )}
             </div>
           </>
         ) : (
-          /* Completed Order View */
           <>
             <div className="mt-4 pt-3 border-t border-gray-700">
-              <div className="flex justify-between items-center text-xs text-gray-400">
+              <div className="flex justify-between text-xs text-gray-400">
                 <span>{formatDateAndTime(order?.orderDate)}</span>
                 <span className="bg-[#1f1f1f] px-2 py-1 rounded-md">
-                  {itemsCount} {itemsCount === 1 ? 'item' : 'items'}
+                  {itemsCount} {itemsCount === 1 ? "item" : "items"}
                 </span>
               </div>
-              
-              <div className="flex justify-between items-center mt-3">
-                <span className="text-gray-300 text-sm font-medium">Total</span>
-                <span className="text-white font-bold">₹{Number(total).toFixed(2)}</span>
+
+              <div className="flex justify-between mt-3">
+                <span className="text-gray-300 text-sm font-medium">
+                  Total
+                </span>
+                <span className="text-white font-bold">
+                  ₹{Number(total).toFixed(2)}
+                </span>
               </div>
             </div>
 
-            {/* Completed Button */}
             <div className="mt-4">
               <button
                 disabled
-                className="w-full bg-gray-700 text-gray-400 text-sm font-medium py-2.5 rounded-lg cursor-not-allowed"
+                className="w-full bg-gray-700 text-gray-400 text-sm py-2.5 rounded-lg cursor-not-allowed"
               >
                 Order Completed
               </button>

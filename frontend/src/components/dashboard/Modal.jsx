@@ -4,28 +4,55 @@ import { IoMdClose } from "react-icons/io";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addTable } from "../../https";
 import { enqueueSnackbar } from "notistack";
+import axios from "axios";
 
 const Modal = ({ isOpen, onClose, type }) => {
+  const queryClient = useQueryClient();
+  const [isLoading, setIsLoading] = useState(false);
+
+  // State for Table
   const [tableData, setTableData] = useState({
     tableNo: "",
     seats: "",
   });
 
-  const queryClient = useQueryClient();
+  // State for Category
+  const [categoryData, setCategoryData] = useState({
+    name: "",
+    description: "",
+  });
 
-  const handleInputChange = (e) => {
+  // State for Dishes
+  const [dishData, setDishData] = useState({
+    name: "",
+    price: "",
+    category: "",
+    description: "",
+    isAvailable: true,
+  });
+
+  const handleTableChange = (e) => {
     const { name, value } = e.target;
     setTableData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    tableMutation.mutate(tableData);
+  const handleCategoryChange = (e) => {
+    const { name, value } = e.target;
+    setCategoryData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleDishChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setDishData((prev) => ({ 
+      ...prev, 
+      [name]: type === "checkbox" ? checked : value 
+    }));
+  };
+
+  // Add Table Mutation
   const tableMutation = useMutation({
     mutationFn: (reqData) => addTable(reqData),
-    onSuccess: (res) => {
+    onSuccess: () => {
       onClose();
       enqueueSnackbar("Table added successfully!", { variant: "success" });
       queryClient.invalidateQueries(["tables"]);
@@ -37,7 +64,246 @@ const Modal = ({ isOpen, onClose, type }) => {
     },
   });
 
+  // Add Category Mutation
+  const categoryMutation = useMutation({
+    mutationFn: async (data) => {
+      const response = await axios.post("http://localhost:8000/api/category", data, {
+        withCredentials: true,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      onClose();
+      enqueueSnackbar("Category added successfully!", { variant: "success" });
+      queryClient.invalidateQueries(["categories"]);
+      queryClient.invalidateQueries(["menu"]);
+      setCategoryData({ name: "", description: "" });
+    },
+    onError: (error) => {
+      const message = error.response?.data?.message || "Failed to add category";
+      enqueueSnackbar(message, { variant: "error" });
+    },
+  });
+
+  // Add Dish Mutation
+  const dishMutation = useMutation({
+    mutationFn: async (data) => {
+      const response = await axios.post("http://localhost:8000/api/menu", data, {
+        withCredentials: true,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      onClose();
+      enqueueSnackbar("Dish added successfully!", { variant: "success" });
+      queryClient.invalidateQueries(["menu"]);
+      setDishData({
+        name: "",
+        price: "",
+        category: "",
+        description: "",
+        isAvailable: true,
+      });
+    },
+    onError: (error) => {
+      const message = error.response?.data?.message || "Failed to add dish";
+      enqueueSnackbar(message, { variant: "error" });
+    },
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    if (type === "table") {
+      if (!tableData.tableNo || !tableData.seats) {
+        enqueueSnackbar("Please fill all fields!", { variant: "warning" });
+        return;
+      }
+      tableMutation.mutate(tableData);
+    } else if (type === "category") {
+      if (!categoryData.name) {
+        enqueueSnackbar("Please enter category name!", { variant: "warning" });
+        return;
+      }
+      categoryMutation.mutate(categoryData);
+    } else if (type === "dishes") {
+      if (!dishData.name || !dishData.price || !dishData.category) {
+        enqueueSnackbar("Please fill all required fields!", { variant: "warning" });
+        return;
+      }
+      dishMutation.mutate(dishData);
+    }
+  };
+
   if (!isOpen) return null;
+
+  // Render different forms based on type
+  const renderForm = () => {
+    if (type === "table") {
+      return (
+        <>
+          <div>
+            <label className="block text-gray-400 text-sm mb-2">
+              Table Number <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="tableNo"
+              value={tableData.tableNo}
+              onChange={handleTableChange}
+              placeholder="e.g., 1, 2, A1, VIP"
+              className="w-full px-4 py-3 bg-[#252525] text-white rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-400 transition"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-gray-400 text-sm mb-2">
+              Number of Seats <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              name="seats"
+              value={tableData.seats}
+              onChange={handleTableChange}
+              placeholder="e.g., 2, 4, 6"
+              min="1"
+              className="w-full px-4 py-3 bg-[#252525] text-white rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-400 transition"
+              required
+            />
+          </div>
+        </>
+      );
+    }
+
+    if (type === "category") {
+      return (
+        <>
+          <div>
+            <label className="block text-gray-400 text-sm mb-2">
+              Category Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={categoryData.name}
+              onChange={handleCategoryChange}
+              placeholder="e.g., Starters, Main Course, Desserts"
+              className="w-full px-4 py-3 bg-[#252525] text-white rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-400 transition"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-gray-400 text-sm mb-2">
+              Description (Optional)
+            </label>
+            <textarea
+              name="description"
+              value={categoryData.description}
+              onChange={handleCategoryChange}
+              placeholder="Brief description of the category"
+              rows="3"
+              className="w-full px-4 py-3 bg-[#252525] text-white rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-400 transition resize-none"
+            />
+          </div>
+        </>
+      );
+    }
+
+    if (type === "dishes") {
+      return (
+        <>
+          <div>
+            <label className="block text-gray-400 text-sm mb-2">
+              Dish Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={dishData.name}
+              onChange={handleDishChange}
+              placeholder="e.g., Butter Chicken, Paneer Tikka"
+              className="w-full px-4 py-3 bg-[#252525] text-white rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-400 transition"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-gray-400 text-sm mb-2">
+              Price (₹) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              name="price"
+              value={dishData.price}
+              onChange={handleDishChange}
+              placeholder="e.g., 250"
+              min="0"
+              step="1"
+              className="w-full px-4 py-3 bg-[#252525] text-white rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-400 transition"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-gray-400 text-sm mb-2">
+              Category <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="category"
+              value={dishData.category}
+              onChange={handleDishChange}
+              placeholder="e.g., Starters, Main Course, Desserts"
+              className="w-full px-4 py-3 bg-[#252525] text-white rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-400 transition"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-gray-400 text-sm mb-2">
+              Description (Optional)
+            </label>
+            <textarea
+              name="description"
+              value={dishData.description}
+              onChange={handleDishChange}
+              placeholder="Brief description of the dish"
+              rows="2"
+              className="w-full px-4 py-3 bg-[#252525] text-white rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-400 transition resize-none"
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              name="isAvailable"
+              checked={dishData.isAvailable}
+              onChange={handleDishChange}
+              className="w-4 h-4 accent-yellow-400"
+            />
+            <label className="text-gray-400 text-sm">
+              Available for ordering
+            </label>
+          </div>
+        </>
+      );
+    }
+
+    return null;
+  };
+
+  const getTitle = () => {
+    if (type === "table") return "Add New Table";
+    if (type === "category") return "Add New Category";
+    if (type === "dishes") return "Add New Dish";
+    return "Add";
+  };
+
+  const getButtonText = () => {
+    if (tableMutation.isPending || categoryMutation.isPending || dishMutation.isPending) return "Adding...";
+    if (type === "table") return "Add Table";
+    if (type === "category") return "Add Category";
+    if (type === "dishes") return "Add Dish";
+    return "Add";
+  };
+
+  const isPending = tableMutation.isPending || categoryMutation.isPending || dishMutation.isPending;
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
@@ -51,7 +317,7 @@ const Modal = ({ isOpen, onClose, type }) => {
         {/* Modal Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-700">
           <h2 className="text-white text-xl font-semibold">
-            Add New Table
+            {getTitle()}
           </h2>
           <button
             onClick={onClose}
@@ -63,43 +329,14 @@ const Modal = ({ isOpen, onClose, type }) => {
 
         {/* Modal Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div>
-            <label className="block text-gray-400 text-sm mb-2">
-              Table Number
-            </label>
-            <input
-              type="text"
-              name="tableNo"
-              value={tableData.tableNo}
-              onChange={handleInputChange}
-              placeholder="e.g. 5, 6, A1"
-              className="w-full px-4 py-3 bg-[#252525] text-white rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-400 transition"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-gray-400 text-sm mb-2">
-              Number of Seats
-            </label>
-            <input
-              type="number"
-              name="seats"
-              value={tableData.seats}
-              onChange={handleInputChange}
-              placeholder="e.g. 2, 4, 6"
-              min="1"
-              className="w-full px-4 py-3 bg-[#252525] text-white rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-400 transition"
-              required
-            />
-          </div>
+          {renderForm()}
 
           <button
             type="submit"
-            disabled={tableMutation.isPending}
+            disabled={isPending}
             className="w-full bg-yellow-400 text-black font-bold py-3 rounded-lg hover:bg-yellow-300 transition disabled:opacity-50 mt-4"
           >
-            {tableMutation.isPending ? "Adding..." : "Add Table"}
+            {getButtonText()}
           </button>
         </form>
       </motion.div>

@@ -29,6 +29,11 @@ const Tables = () => {
     document.title = "DineFlow | Tables";
   }, []);
 
+  // Debug: Log customer data when component mounts or updates
+  useEffect(() => {
+    console.log("🔍 [Tables] Customer from Redux:", customer);
+  }, [customer]);
+
   /* ---------------- FETCH TABLES ---------------- */
 
   const { data, isLoading } = useQuery({
@@ -39,6 +44,8 @@ const Tables = () => {
 
   const tables = data?.data?.data || [];
 
+  console.log("📋 [Tables] Tables loaded:", tables.length);
+
   /* ---------------- CREATE TABLE ---------------- */
 
   const createTableMutation = useMutation({
@@ -47,15 +54,14 @@ const Tables = () => {
       enqueueSnackbar("Table created successfully!", {
         variant: "success",
       });
-
       queryClient.invalidateQueries({ queryKey: ["tables"] });
-
       setShowModal(false);
       setTableNo("");
       setSeats("");
     },
-    onError: () => {
-      enqueueSnackbar("Failed to create table!", {
+    onError: (error) => {
+      console.error("Failed to create table:", error);
+      enqueueSnackbar(error.response?.data?.message || "Failed to create table!", {
         variant: "error",
       });
     },
@@ -78,40 +84,71 @@ const Tables = () => {
   const createOrderMutation = useMutation({
     mutationFn: addOrder,
     onSuccess: (response) => {
+      console.log("✅ Order created successfully:", response.data);
       queryClient.invalidateQueries({ queryKey: ["tables"] });
-
       const orderId = response?.data?.data?._id;
-
       dispatch(removeCustomer());
       navigate(`/orders/${orderId}`);
+    },
+    onError: (error) => {
+      console.error("❌ Order creation failed:");
+      console.error("   Error response:", error.response?.data);
+      console.error("   Status:", error.response?.status);
+      enqueueSnackbar(
+        error.response?.data?.message || "Failed to create order. Please try again.", 
+        { variant: "error" }
+      );
     },
   });
 
   const handleTableClick = (table) => {
+    console.log("🖱️ Table clicked:", table);
+    console.log("👤 Customer data:", customer);
+
+    // Check if customer exists
     if (!customer.customerName) {
+      console.warn("❌ No customer name found!");
       enqueueSnackbar("Please create customer first!", {
         variant: "warning",
       });
       return;
     }
 
+    // Check if table is already booked
     if (table.currentOrder) {
+      console.warn("❌ Table already booked:", table.currentOrder);
       enqueueSnackbar("Table already booked!", {
         variant: "warning",
       });
       return;
     }
 
-    createOrderMutation.mutate({
+    // Convert guests to number
+    const guestCount = Number(customer.guests);
+    console.log("👥 Guest count:", guestCount, "Type:", typeof guestCount);
+
+    if (isNaN(guestCount) || guestCount <= 0) {
+      enqueueSnackbar("Please enter a valid number of guests!", {
+        variant: "warning",
+      });
+      return;
+    }
+
+    // Prepare order data
+    const orderData = {
       tableId: table._id,
       customerDetails: {
-        name: customer.customerName,
-        phone: customer.customerPhone,
-        guests: customer.guests,
+        name: String(customer.customerName).trim(),
+        phone: String(customer.customerPhone).trim(),
+        guests: guestCount,
       },
       orderStatus: "Pending",
       items: [],
-    });
+      paymentMethod: "Cash",
+    };
+
+    console.log("📦 [Tables] Sending order data:", JSON.stringify(orderData, null, 2));
+    createOrderMutation.mutate(orderData);
   };
 
   const filteredTables =
@@ -119,7 +156,6 @@ const Tables = () => {
       ? tables
       : tables.filter((table) => table.currentOrder);
 
-  // Button styling function for filters
   const getFilterButtonStyle = (filter) => {
     const isActive = statusFilter === filter;
     
@@ -127,25 +163,24 @@ const Tables = () => {
       return "bg-yellow-400 text-black font-semibold";
     }
     
-    return "bg-[#2a2a2a] text-gray-300 font-medium hover:bg-[#3a3a3a] hover:text-white";
+    return "bg-[#2a2a2a] text-black font-medium hover:bg-[#3a3a3a]";
   };
 
   return (
     <div className="h-screen bg-[#121212] flex flex-col overflow-hidden">
       
-      {/* Header - Fixed at top */}
+      {/* Header */}
       <div className="bg-[#1E1E1E] border-b border-gray-800 px-4 sm:px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-8">
             <BackButton />
             <h1 className="text-md font-bold text-white">
               <span className="text-yellow-400">Tables</span>
             </h1>
           </div>
 
-          {/* Right side - Add Table button and filters */}
+          {/* Right side */}
           <div className="flex items-center gap-4">
-            {/* Add Table Button */}
             <button
               onClick={() => setShowModal(true)}
               className="bg-green-600 hover:bg-green-700 text-black px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition"
@@ -154,18 +189,16 @@ const Tables = () => {
               <span>Add Table</span>
             </button>
 
-            {/* Filter Buttons */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
               <button
                 onClick={() => setStatusFilter("all")}
-                className={`text-black px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 outline-none focus:outline-none active:outline-none ${getFilterButtonStyle("all")}`}
+                className={`px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${getFilterButtonStyle("all")}`}
               >
                 All
               </button>
-
               <button
                 onClick={() => setStatusFilter("booked")}
-                className={`text-black px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 outline-none focus:outline-none active:outline-none ${getFilterButtonStyle("booked")}`}
+                className={`px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${getFilterButtonStyle("booked")}`}
               >
                 Booked
               </button>
@@ -174,7 +207,7 @@ const Tables = () => {
         </div>
       </div>
 
-      {/* Tables Grid - Scrollable area */}
+      {/* Tables Grid */}
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="px-4 sm:px-6 py-6">
           {isLoading ? (
@@ -217,16 +250,12 @@ const Tables = () => {
         </div>
       </div>
 
-      {/* ================= MODAL ================= */}
+      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-[#1E1E1E] w-full max-w-md rounded-xl border border-gray-700">
-            
-            {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b border-gray-700">
-              <h2 className="text-white text-xl font-semibold">
-                Add New Table
-              </h2>
+              <h2 className="text-white text-xl font-semibold">Add New Table</h2>
               <button
                 onClick={() => setShowModal(false)}
                 className="text-gray-400 hover:text-white transition"
@@ -235,7 +264,6 @@ const Tables = () => {
               </button>
             </div>
 
-            {/* Modal Body */}
             <div className="p-5 space-y-4">
               <div>
                 <label className="block text-gray-400 text-sm mb-2">
@@ -246,7 +274,7 @@ const Tables = () => {
                   value={tableNo}
                   onChange={(e) => setTableNo(e.target.value)}
                   placeholder="e.g. 5, 6, A1"
-                  className="w-full px-4 py-3 bg-[#252525] text-white rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-400 transition placeholder-gray-500"
+                  className="w-full px-4 py-3 bg-[#252525] text-white rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-400 transition"
                 />
               </div>
 
@@ -259,7 +287,7 @@ const Tables = () => {
                   value={seats}
                   onChange={(e) => setSeats(e.target.value)}
                   placeholder="e.g. 2, 4, 6"
-                  className="w-full px-4 py-3 bg-[#252525] text-white rounded-lg border border-gray-700 focus:outline-none focus:border-yellow-400 transition placeholder-gray-500"
+                  className="w-full px-4 py-3 bg-[#252525] text-white rounded-lg border border-gray-700"
                 />
               </div>
 
@@ -275,7 +303,6 @@ const Tables = () => {
         </div>
       )}
 
-      {/* Bottom Navigation */}
       <BottomNav />
     </div>
   );

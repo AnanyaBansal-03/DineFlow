@@ -7,45 +7,39 @@ const CartInfo = ({ order }) => {
   const queryClient = useQueryClient();
   const orderId = order?._id;
 
-  // Mutation to add/increase item quantity
   const addItemMutation = useMutation({
     mutationFn: ({ orderId, item }) => addItemToOrder(orderId, item),
     onSuccess: () => {
       queryClient.invalidateQueries(["order", orderId]);
     },
-    onError: (error) => {
-      console.error("Failed to add item:", error);
-    },
   });
 
-  // Mutation to decrease item quantity (or remove if quantity becomes 0)
   const decreaseItemMutation = useMutation({
     mutationFn: ({ orderId, itemName }) => decreaseItemFromOrder(orderId, itemName),
     onSuccess: () => {
       queryClient.invalidateQueries(["order", orderId]);
     },
-    onError: (error) => {
-      console.error("Failed to decrease item:", error);
-    },
   });
 
   const items = order?.items || [];
 
-  // Function to determine if item is veg or non-veg based on category
+  // Improved veg/non-veg detection
   const getItemType = (item) => {
-    if (item.category) {
-      return item.category?.toLowerCase().includes("non-veg") ? "non-veg" : "veg";
-    }
-    return "veg"; // default
+    const category = item.category || "";
+    const lowerCategory = category.toLowerCase();
+    const isNonVeg = lowerCategory.includes("non-veg") ||
+                     lowerCategory.includes("chicken") ||
+                     lowerCategory.includes("mutton") ||
+                     lowerCategory.includes("fish") ||
+                     lowerCategory.includes("egg");
+    return isNonVeg ? "non-veg" : "veg";
   };
 
-  // Handle increase quantity
   const handleIncrease = (item) => {
     if (!orderId) return;
     addItemMutation.mutate({ orderId, item });
   };
 
-  // Handle decrease quantity
   const handleDecrease = (item) => {
     if (!orderId || !item.name) return;
     decreaseItemMutation.mutate({ orderId, itemName: item.name });
@@ -66,20 +60,24 @@ const CartInfo = ({ order }) => {
           <p className="text-gray-600 text-xs mt-1">Select items from the menu</p>
         </div>
       ) : (
-        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-600">
+        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
           {items.map((item, index) => {
             const itemType = getItemType(item);
             const quantity = item.quantity || 1;
             const itemTotal = item.price * quantity;
+            const isNonVeg = itemType === "non-veg";
             
             return (
               <div key={index} className="bg-[#262626] rounded-lg p-3 border border-gray-700 hover:border-gray-600 transition">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${
-                        itemType === "veg" ? "bg-green-500" : "bg-red-500"
-                      }`} />
+                      {/* 🔴🟢 VISIBLE VEG/NON-VEG DOT */}
+                      <div
+                        className={`w-3 h-3 rounded-full shadow-sm ${
+                          isNonVeg ? "bg-red-500" : "bg-green-500"
+                        }`}
+                      />
                       <p className="text-white font-medium text-sm">{item.name}</p>
                     </div>
                     
@@ -87,28 +85,25 @@ const CartInfo = ({ order }) => {
                       <span className="text-gray-400 text-xs">
                         ₹{item.price} each
                       </span>
-                      {item.category && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                          itemType === "veg" 
-                            ? "bg-green-500/10 text-green-500" 
-                            : "bg-red-500/10 text-red-500"
-                        }`}>
-                          {itemType === "veg" ? "Veg" : "Non-Veg"}
-                        </span>
-                      )}
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                        isNonVeg 
+                          ? "bg-red-500/15 text-red-400" 
+                          : "bg-green-500/15 text-green-400"
+                      }`}>
+                        {isNonVeg ? "Non-Veg" : "Veg"}
+                      </span>
                     </div>
 
-                    {/* Quantity Controls - FIXED */}
+                    {/* Quantity Controls */}
                     <div className="flex items-center gap-3 mt-2">
                       <button
-  onClick={() => handleDecrease(item)}
-  disabled={decreaseItemMutation.isPending}
-  className="text-black hover:text-yellow-400 transition disabled:opacity-50"
-  title="Decrease quantity"
->
-  <FaMinusCircle size={16} />
-</button>
-
+                        onClick={() => handleDecrease(item)}
+                        disabled={decreaseItemMutation.isPending}
+                        className="text-gray-400 hover:text-yellow-400 transition disabled:opacity-50"
+                        title="Decrease quantity"
+                      >
+                        <FaMinusCircle size={16} />
+                      </button>
                       <span className="text-white text-sm font-medium">{quantity}</span>
                       <button
                         onClick={() => handleIncrease(item)}

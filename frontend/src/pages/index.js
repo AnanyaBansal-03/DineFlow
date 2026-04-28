@@ -5,3 +5,4 @@ export { default as Tables } from './Tables.jsx'
 export { default as Menu } from './Menu.jsx'
 export { default as Dashboard } from "./Dashboard.jsx"
 export { default as LandingPage } from './LandingPage';
+export { default as More } from './More.jsx'  // ✅ ADD THIS

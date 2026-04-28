@@ -96,13 +96,13 @@ const BottomNav = () => {
 
         {/* More Button */}
         <button
-          onClick={() => navigate("/more")}
+          onClick={() => navigate("/menu")}
           className={`flex flex-col items-center justify-center font-medium w-16 ${
-            isActive("/more") ? "text-yellow-400" : "text-gray-500 hover:text-yellow-400"
+            isActive("/menu") ? "text-yellow-400" : "text-gray-500 hover:text-yellow-400"
           }`}
         >
           <CiCircleMore size={22} />
-          <span className="text-xs mt-1">More</span>
+          <span className="text-xs mt-1">Menu</span>
         </button>
       </div>
 

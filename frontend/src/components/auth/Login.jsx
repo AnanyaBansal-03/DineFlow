@@ -30,9 +30,24 @@ const Login = () => {
     mutationFn: (reqData) => login(reqData),
     onSuccess: (res) => {
       const { _id, name, email, phone, role } = res.data.data;
+      
+      console.log("🔍 User role from backend:", role);
+      
       dispatch(setUser({ _id, name, email, phone, role }));
-      enqueueSnackbar("Login successful 🎉", { variant: "success" });
-      navigate("/home");
+      enqueueSnackbar(`Welcome ${name}! 🎉`, { variant: "success" });
+      
+      // ✅ Role-based redirect
+      if (role === "Kitchen") {
+        console.log("✅ Redirecting to /kitchen");
+        navigate("/kitchen");
+      } else if (role === "Admin") {
+        // ✅ Admin redirects to home page
+        console.log("✅ Redirecting to /home (Admin)");
+        navigate("/home");
+      } else {
+        console.log("✅ Redirecting to /home (role:", role, ")");
+        navigate("/home");
+      }
     },
     onError: (error) => {
       const message = error.response?.data?.message || "Login failed";

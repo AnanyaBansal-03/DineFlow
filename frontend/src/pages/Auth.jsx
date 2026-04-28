@@ -45,7 +45,7 @@ const Auth = () => {
           {/* Back to Home Button - FIXED */}
           <button
             onClick={handleBackToHome}
-            className="flex items-center gap-2 text-gray-300 hover:text-yellow-400 transition w-fit"
+            className="flex items-center gap-2 text-black hover:text-yellow-400 transition w-fit"
           >
             <FaArrowLeft size={20} />
             <span>Back to Home</span>
@@ -85,7 +85,7 @@ const Auth = () => {
             <h1 className="text-3xl font-bold text-white mt-3">
               Dine<span className="text-yellow-400">Flow</span>
             </h1>
-            <p className="text-gray-500 text-sm mt-2">
+            <p className="text-white text-sm mt-2">
               {isRegister ? "Create your account" : "Welcome back!"}
             </p>
           </div>
@@ -93,7 +93,7 @@ const Auth = () => {
           {/* CARD */}
           <div className="bg-[#141414] p-6 rounded-2xl shadow-2xl border border-gray-800">
             <h2 className="text-xl font-semibold text-yellow-400 text-center mb-6">
-              {isRegister ? "Customer Registration" : "Customer Login"}
+              {isRegister ? "Employee Registration" : "Employee Login"}
             </h2>
 
             {isRegister ? (

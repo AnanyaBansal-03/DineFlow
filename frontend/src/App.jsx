@@ -13,17 +13,20 @@ import {
   Tables,
   Menu,
   Dashboard,
-} from "./pages";
+} from "./pages"; 
+import More from "./pages/More";
 import Header from "./components/shared/Header";
 import { useSelector } from "react-redux";
 import useLoadData from "./hooks/useLoadData";
 import FullScreenLoader from "./components/shared/FullScreenLoader";
 import OrderDetails from "./pages/OrderDetails";
+import Kitchen from "./pages/kitchen/Kitchen";
+import { SocketProvider } from "./context/SocketContext";
 
 function Layout() {
   const isLoading = useLoadData();
   const location = useLocation();
-  const { isAuth } = useSelector((state) => state.user);
+  const { isAuth, role } = useSelector((state) => state.user);
 
   // Public routes that don't need authentication
   const publicRoutes = ["/landing", "/auth"];
@@ -35,6 +38,13 @@ function Layout() {
   // Hide header on public routes
   const hideHeader = publicRoutes.includes(location.pathname);
 
+  // ✅ Helper to get default redirect based on role
+  const getDefaultRedirect = () => {
+    if (role === "Kitchen") return "/kitchen";
+    // Admin and all other roles go to home
+    return "/home";
+  };
+
   return (
     <div className="min-h-screen w-full bg-[#121212] overflow-x-hidden">
       {!hideHeader && <Header />}
@@ -44,7 +54,7 @@ function Layout() {
         <Route
           path="/"
           element={
-            isAuth ? <Navigate to="/home" /> : <Navigate to="/landing" />
+            isAuth ? <Navigate to={getDefaultRedirect()} /> : <Navigate to="/landing" />
           }
         />
 
@@ -54,14 +64,23 @@ function Layout() {
         {/* Auth */}
         <Route
           path="/auth"
-          element={isAuth ? <Navigate to="/home" /> : <Auth />}
+          element={isAuth ? <Navigate to={getDefaultRedirect()} /> : <Auth />}
         />
 
-        {/* Protected Routes */}
+        <Route
+          path="/more"
+          element={
+            <ProtectedRoutes>
+              <More />
+            </ProtectedRoutes>
+          }
+        />
+
+        {/* Protected Routes with Role-Based Access */}
         <Route
           path="/home"
           element={
-            <ProtectedRoutes>
+            <ProtectedRoutes allowedRoles={["Waiter", "Admin", "Kitchen"]}>
               <Home />
             </ProtectedRoutes>
           }
@@ -70,7 +89,7 @@ function Layout() {
         <Route
           path="/orders"
           element={
-            <ProtectedRoutes>
+            <ProtectedRoutes allowedRoles={["Waiter", "Admin"]}>
               <Orders />
             </ProtectedRoutes>
           }
@@ -79,7 +98,7 @@ function Layout() {
         <Route
           path="/orders/:id"
           element={
-            <ProtectedRoutes>
+            <ProtectedRoutes allowedRoles={["Waiter", "Admin"]}>
               <OrderDetails />
             </ProtectedRoutes>
           }
@@ -88,7 +107,7 @@ function Layout() {
         <Route
           path="/tables"
           element={
-            <ProtectedRoutes>
+            <ProtectedRoutes allowedRoles={["Waiter", "Admin"]}>
               <Tables />
             </ProtectedRoutes>
           }
@@ -97,7 +116,7 @@ function Layout() {
         <Route
           path="/menu"
           element={
-            <ProtectedRoutes>
+            <ProtectedRoutes allowedRoles={["Waiter", "Admin"]}>
               <Menu />
             </ProtectedRoutes>
           }
@@ -106,8 +125,17 @@ function Layout() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoutes>
+            <ProtectedRoutes allowedRoles={["Admin"]}>
               <Dashboard />
+            </ProtectedRoutes>
+          }
+        />
+
+        <Route
+          path="/kitchen"
+          element={
+            <ProtectedRoutes allowedRoles={["Kitchen", "Admin"]}>
+              <Kitchen />
             </ProtectedRoutes>
           }
         />
@@ -126,13 +154,24 @@ function Layout() {
   );
 }
 
-function ProtectedRoutes({ children }) {
-  const { isAuth } = useSelector((state) => state.user);
+// ProtectedRoutes with role-based access control
+function ProtectedRoutes({ children, allowedRoles = [] }) {
+  const { isAuth, role } = useSelector((state) => state.user);
   const location = useLocation();
 
   if (!isAuth) {
-    // Save the attempted location for redirect after login
     return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  // If route has role restrictions, check if user's role is allowed
+  if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
+    console.log(`❌ Access denied: ${role} cannot access ${location.pathname}`);
+    // Redirect based on role
+    if (role === "Kitchen") {
+      return <Navigate to="/kitchen" replace />;
+    } else {
+      return <Navigate to="/home" replace />;
+    }
   }
 
   return children;
@@ -140,9 +179,11 @@ function ProtectedRoutes({ children }) {
 
 function App() {
   return (
-    <Router>
-      <Layout />
-    </Router>
+    <SocketProvider>
+      <Router>
+        <Layout />
+      </Router>
+    </SocketProvider>
   );
 }
 

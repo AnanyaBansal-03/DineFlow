@@ -30,8 +30,21 @@ export const updateTable = ({ tableId, ...tableData }) =>
 // =======================
 // ORDERS
 // =======================
-export const addOrder = (data) =>
-  axiosWrapper.post("/api/order/", data);
+export const addOrder = async (data) => {
+  console.log("🚀 [addOrder] Sending request with data:", JSON.stringify(data, null, 2));
+  try {
+    const response = await axiosWrapper.post("/api/order/", data);
+    console.log("✅ [addOrder] Success:", response.data);
+    return response;
+  } catch (error) {
+    console.error("❌ [addOrder] Failed:");
+    console.error("   Status:", error.response?.status);
+    console.error("   Error Message:", error.response?.data?.message);
+    console.error("   Full Error Response:", error.response?.data);
+    console.error("   Data that was sent:", data);
+    throw error;
+  }
+};
 
 export const getOrders = () =>
   axiosWrapper.get("/api/order");

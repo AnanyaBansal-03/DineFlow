@@ -244,7 +244,7 @@ const Register = ({ setIsRegister }) => {
           </label>
 
           <div className="flex gap-2">
-            {["Waiter", "Cashier", "Admin"].map((role) => (
+            {["Waiter", "Kitchen", "Admin"].map((role) => (
               <button
                 key={role}
                 type="button"
@@ -252,7 +252,7 @@ const Register = ({ setIsRegister }) => {
                 className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
                   formData.role === role
                     ? "bg-yellow-400 text-black"
-                    : "bg-[#1f1f1f] text-gray-300 hover:bg-[#2a2a2a]"
+                    : "bg-[#1f1f1f] text-black"
                 }`}
               >
                 {role}

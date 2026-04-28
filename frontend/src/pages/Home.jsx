@@ -101,7 +101,7 @@ const Home = () => {
             {userData.role === "Admin" && (
               <button
                 onClick={() => navigate("/dashboard")}
-                className="flex items-center gap-2 bg-[#262626] hover:bg-[#2f2f2f] text-white px-4 py-2 rounded-lg border border-gray-700 transition"
+                className="flex items-center gap-2 bg-[#262626] hover:bg-[#2f2f2f] text-black px-4 py-2 rounded-lg border border-gray-700 transition"
                 title="Go to Dashboard"
               >
                 <MdDashboard className="text-xl text-yellow-400" />

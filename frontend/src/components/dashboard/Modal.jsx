@@ -67,7 +67,7 @@ const Modal = ({ isOpen, onClose, type }) => {
   // Add Category Mutation
   const categoryMutation = useMutation({
     mutationFn: async (data) => {
-      const response = await axios.post("http://localhost:8000/api/category", data, {
+      const response = await axios.post("https://dineflow-e802.onrender.com/api/category", data, {
         withCredentials: true,
       });
       return response.data;
@@ -88,7 +88,7 @@ const Modal = ({ isOpen, onClose, type }) => {
   // Add Dish Mutation
   const dishMutation = useMutation({
     mutationFn: async (data) => {
-      const response = await axios.post("http://localhost:8000/api/menu", data, {
+      const response = await axios.post("https://dineflow-e802.onrender.com/api/menu", data, {
         withCredentials: true,
       });
       return response.data;

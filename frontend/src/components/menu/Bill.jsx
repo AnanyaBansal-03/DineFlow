@@ -46,7 +46,7 @@ const Bill = ({ order }) => {
     
     try {
       await axios.put(
-        `http://localhost:8000/api/order/${orderId}`,
+        `https://dineflow-e802.onrender.com/api/order/${orderId}`,
         {
           orderStatus: "Completed",
           paymentStatus: "Paid",
@@ -94,7 +94,7 @@ const Bill = ({ order }) => {
       } else {
         try {
           await axios.put(
-            `http://localhost:8000/api/order/${data._id}`,
+            `https://dineflow-e802.onrender.com/api/order/${data._id}`,
             {
               orderStatus: "Completed",
               paymentStatus: "Paid",
@@ -142,7 +142,7 @@ const Bill = ({ order }) => {
         if (isMounted.current) setShowPaymentModal(true);
       } else {
         axios.put(
-          `http://localhost:8000/api/order/${order._id}`,
+          `https://dineflow-e802.onrender.com/api/order/${order._id}`,
           {
             orderStatus: "Completed",
             paymentStatus: "Paid",

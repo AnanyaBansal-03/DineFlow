@@ -8,24 +8,20 @@ const config = require("../config/config");
 
 const register = async (req, res, next) => {
     try {
-
-        console.log("REGISTER BODY:", req.body); // Debug log
+        console.log("REGISTER BODY:", req.body);
 
         const { name, phone, email, password, role } = req.body;
 
-        // Check required fields
         if (!name || !phone || !email || !password || !role) {
             return next(createHttpError(400, "All fields are required!"));
         }
 
-        // Check if user already exists
         const isUserPresent = await User.findOne({ email });
 
         if (isUserPresent) {
             return next(createHttpError(400, "User already exists with this email!"));
         }
 
-        // Create user
         const newUser = new User({
             name,
             phone,
@@ -36,7 +32,6 @@ const register = async (req, res, next) => {
 
         await newUser.save();
 
-        // Remove password before sending response
         const userResponse = newUser.toObject();
         delete userResponse.password;
 
@@ -47,28 +42,21 @@ const register = async (req, res, next) => {
         });
 
     } catch (error) {
-
-        console.log("REGISTER ERROR:", error); // Debug error
-
+        console.log("REGISTER ERROR:", error);
         if (error.name === "ValidationError") {
-
             const messages = Object.values(error.errors)
                 .map(err => err.message)
                 .join(", ");
-
             return next(createHttpError(400, messages));
         }
-
         next(error);
     }
 };
-
 
 /* ================= LOGIN USER ================= */
 
 const login = async (req, res, next) => {
     try {
-
         const { email, password } = req.body;
 
         if (!email || !password) {
@@ -93,37 +81,35 @@ const login = async (req, res, next) => {
             { expiresIn: "1d" }
         );
 
-        // Cookie (fixed for localhost)
+        // Set cookie (for same-domain)
         res.cookie("accessToken", accessToken, {
-    maxAge: 1000 * 60 * 60 * 24 * 30,
-    httpOnly: true,
-    sameSite: "none",
-    secure: true
-});
+            maxAge: 1000 * 60 * 60 * 24 * 30,
+            httpOnly: true,
+            sameSite: "none",
+            secure: true
+        });
 
         const userResponse = user.toObject();
         delete userResponse.password;
 
+        // ✅ IMPORTANT: Send token in response body for cross-domain
         res.status(200).json({
             success: true,
             message: "User logged in successfully!",
-            data: userResponse
+            data: userResponse,
+            token: accessToken  // <-- ADD THIS LINE
         });
 
     } catch (error) {
-
         console.log("LOGIN ERROR:", error);
-
         next(error);
     }
 };
-
 
 /* ================= GET USER DATA ================= */
 
 const getUserData = async (req, res, next) => {
     try {
-
         const user = await User
             .findById(req.user._id)
             .select("-password");
@@ -138,24 +124,20 @@ const getUserData = async (req, res, next) => {
         });
 
     } catch (error) {
-
         console.log("GET USER ERROR:", error);
-
         next(error);
     }
 };
-
 
 /* ================= LOGOUT USER ================= */
 
 const logout = async (req, res, next) => {
     try {
-
         res.clearCookie("accessToken", {
-    httpOnly: true,
-    sameSite: "none",
-    secure: true
-});
+            httpOnly: true,
+            sameSite: "none",
+            secure: true
+        });
 
         res.status(200).json({
             success: true,
@@ -163,13 +145,10 @@ const logout = async (req, res, next) => {
         });
 
     } catch (error) {
-
         console.log("LOGOUT ERROR:", error);
-
         next(error);
     }
 };
-
 
 module.exports = {
     register,

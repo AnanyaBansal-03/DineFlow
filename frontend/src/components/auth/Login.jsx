@@ -29,27 +29,40 @@ const Login = () => {
   const loginMutation = useMutation({
     mutationFn: (reqData) => login(reqData),
     onSuccess: (res) => {
-      const { _id, name, email, phone, role } = res.data.data;
+      console.log("Full response:", res.data);
       
-      console.log("🔍 User role from backend:", role);
+      // ✅ Get data from the correct location
+      const userData = res.data.data;
+      const token = res.data.token; // Token should be in res.data.token
       
-      dispatch(setUser({ _id, name, email, phone, role }));
-      enqueueSnackbar(`Welcome ${name}! 🎉`, { variant: "success" });
+      console.log("User data:", userData);
+      console.log("Token:", token);
       
-      // ✅ Role-based redirect to specific dashboards
+      // ✅ Save token to localStorage
+      if (token) {
+        localStorage.setItem("accessToken", token);
+        console.log("Token saved to localStorage");
+      } else {
+        console.warn("No token received from server!");
+      }
+      
+      dispatch(setUser(userData));
+      enqueueSnackbar(`Welcome ${userData.name}! 🎉`, { variant: "success" });
+      
+      // Role-based redirect
+      const role = userData.role;
       if (role === "Kitchen") {
-        console.log("✅ Redirecting Kitchen to /kitchen");
         navigate("/kitchen");
+      } else if (role === "Admin") {
+        navigate("/home");
       } else if (role === "Waiter") {
-        console.log("✅ Redirecting Waiter to /waiter");
         navigate("/waiter");
       } else {
-        // Admin and any other role goes to home
-        console.log("✅ Redirecting to /home");
         navigate("/home");
       }
     },
     onError: (error) => {
+      console.error("Login error:", error.response?.data);
       const message = error.response?.data?.message || "Login failed";
       enqueueSnackbar(message, { variant: "error" });
     },
@@ -64,6 +77,7 @@ const Login = () => {
     <div className="w-full">
       <div className="w-full bg-[#141414] p-8 rounded-2xl shadow-2xl border border-gray-800">
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* ... rest of your form JSX remains the same ... */}
           <div>
             <label className="block text-gray-400 mb-2 text-sm">
               Email Address

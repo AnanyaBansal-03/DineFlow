@@ -17,10 +17,12 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     // Connect to backend server
-    const newSocket = io("http://localhost:8000", {
-      withCredentials: true,
-      transports: ["websocket", "polling"],
-    });
+   const SOCKET_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+const newSocket = io(SOCKET_URL, {
+  withCredentials: true,
+  transports: ["websocket", "polling"],
+});
 
     newSocket.on("connect", () => {
       console.log("✅ Socket connected:", newSocket.id);

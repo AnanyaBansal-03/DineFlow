@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 8000;
 // Allow multiple origins for CORS
 const allowedOrigins = [
     "http://localhost:5173",
-    "https://dineflow-frontend.vercel.app",
+    "https://dine-flow-beige.vercel.app",
     process.env.FRONTEND_URL
 ].filter(Boolean);
 

@@ -1,12 +1,11 @@
 import axios from "axios";
 
-const defaultHeader = {
-  "Content-Type": "application/json",
-  Accept: "application/json",
-};
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export const axiosWrapper = axios.create({
-  baseURL: "http://localhost:8000", // ✅ Backend URL
+  baseURL: BASE_URL,
   withCredentials: true,
-  headers: { ...defaultHeader },
+  headers: {
+    "Content-Type": "application/json",
+  },
 });

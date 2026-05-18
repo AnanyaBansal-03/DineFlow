@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { FaSearch } from "react-icons/fa";
 import { FaUserCircle } from "react-icons/fa";
-import { FaBell } from "react-icons/fa";
 import { FaTimes } from "react-icons/fa";
 import logo from "../../assets/images/logo.png";
 import { useDispatch, useSelector } from "react-redux";
@@ -12,6 +11,7 @@ import { removeUser } from "../../redux/slices/userSlice";
 import { useNavigate } from "react-router-dom";
 import { MdDashboard } from "react-icons/md";
 import { enqueueSnackbar } from "notistack";
+import NotificationBell from "./NotificationBell"; // ✅ IMPORT NOTIFICATION BELL
 
 const Header = () => {
   const userData = useSelector((state) => state.user);
@@ -120,13 +120,10 @@ const Header = () => {
     setSearchTerm("");
     
     if (type === "order") {
-      // Redirect to order details page
       navigate(`/orders/${id}`);
     } else if (type === "table") {
-      // Redirect to tables page
       navigate("/tables");
     } else if (type === "menu") {
-      // Redirect to menu page
       navigate("/menu");
     }
   };
@@ -168,7 +165,7 @@ const Header = () => {
                 setSearchTerm("");
                 setShowSearchResults(false);
               }}
-              className="text-black"
+              className="text-gray-400 hover:text-white"
             >
               <FaTimes size={12} />
             </button>
@@ -197,7 +194,7 @@ const Header = () => {
                         className="w-full text-left px-3 py-2 hover:bg-[#262626] rounded-lg transition flex items-center justify-between"
                       >
                         <div>
-                          <p className="text-black text-sm font-medium">
+                          <p className="text-white text-sm font-medium">
                             #{order._id?.slice(-8)}
                           </p>
                           <p className="text-gray-400 text-xs">
@@ -225,7 +222,7 @@ const Header = () => {
                         className="w-full text-left px-3 py-2 hover:bg-[#262626] rounded-lg transition flex items-center justify-between"
                       >
                         <div>
-                          <p className="text-black text-sm font-medium">{item.name}</p>
+                          <p className="text-white text-sm font-medium">{item.name}</p>
                           <p className="text-gray-400 text-xs">{item.category}</p>
                         </div>
                         <p className="text-yellow-400 text-sm font-medium">
@@ -249,7 +246,7 @@ const Header = () => {
                         className="w-full text-left px-3 py-2 hover:bg-[#262626] rounded-lg transition flex items-center justify-between"
                       >
                         <div>
-                          <p className="text-black text-sm font-medium">
+                          <p className="text-white text-sm font-medium">
                             Table {table.tableNo}
                           </p>
                           <p className="text-gray-400 text-xs">
@@ -269,6 +266,7 @@ const Header = () => {
 
       {/* RIGHT SECTION - User details and icons */}
       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+        {/* Mobile search button */}
         <button 
           className="md:hidden bg-[#262626] p-1.5 rounded-full"
           onClick={() => {
@@ -278,16 +276,18 @@ const Header = () => {
           <FaSearch className="text-gray-400 text-lg" />
         </button>
 
+        {/* Admin Dashboard Button */}
         {userData.role === "Admin" && (
           <button 
             onClick={() => navigate("/dashboard")} 
             className="bg-[#262626] hover:bg-[#2f2f2f] rounded-full p-2 transition"
             title="Dashboard"
           >
-            <MdDashboard className="text-black text-lg" />
+            <MdDashboard className="text-gray-300 text-lg" />
           </button>
         )}
 
+        {/* Kitchen Button */}
         {userData.role === "Kitchen" && (
           <button 
             onClick={() => navigate("/kitchen")} 
@@ -298,11 +298,10 @@ const Header = () => {
           </button>
         )}
 
-        <button className="bg-[#262626] hover:bg-[#2f2f2f] rounded-full p-2 transition relative">
-          <FaBell className="text-black text-lg" />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-yellow-400 rounded-full"></span>
-        </button>
+        {/* 🔔 NOTIFICATION BELL - REPLACED THE OLD BELL BUTTON */}
+        <NotificationBell />
 
+        {/* User Profile */}
         <div className="flex items-center gap-1.5 cursor-pointer group">
           <FaUserCircle className="text-gray-300 text-2xl sm:text-3xl" />
           <div className="hidden sm:flex flex-col">
@@ -314,12 +313,13 @@ const Header = () => {
             </span>
           </div>
           
+          {/* Logout Button */}
           <button
             onClick={handleLogout}
             className="ml-0.5 p-1.5 hover:bg-[#262626] rounded-full transition"
             title="Logout"
           >
-            <IoLogOut className="text-black hover:text-yellow-400 text-xl" />
+            <IoLogOut className="text-gray-400 hover:text-yellow-400 text-xl" />
           </button>
         </div>
       </div>

@@ -36,16 +36,16 @@ const Login = () => {
       dispatch(setUser({ _id, name, email, phone, role }));
       enqueueSnackbar(`Welcome ${name}! 🎉`, { variant: "success" });
       
-      // ✅ Role-based redirect
+      // ✅ Role-based redirect to specific dashboards
       if (role === "Kitchen") {
-        console.log("✅ Redirecting to /kitchen");
+        console.log("✅ Redirecting Kitchen to /kitchen");
         navigate("/kitchen");
-      } else if (role === "Admin") {
-        // ✅ Admin redirects to home page
-        console.log("✅ Redirecting to /home (Admin)");
-        navigate("/home");
+      } else if (role === "Waiter") {
+        console.log("✅ Redirecting Waiter to /waiter");
+        navigate("/waiter");
       } else {
-        console.log("✅ Redirecting to /home (role:", role, ")");
+        // Admin and any other role goes to home
+        console.log("✅ Redirecting to /home");
         navigate("/home");
       }
     },

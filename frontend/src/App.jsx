@@ -22,6 +22,9 @@ import FullScreenLoader from "./components/shared/FullScreenLoader";
 import OrderDetails from "./pages/OrderDetails";
 import Kitchen from "./pages/kitchen/Kitchen";
 import { SocketProvider } from "./context/SocketContext";
+import WaiterDashboard from "./pages/WaiterDashboard";
+import { NotificationProvider } from "./context/NotificationContext";
+import Notifications from "./pages/Notifications"; // ✅ ADD THIS IMPORT
 
 function Layout() {
   const isLoading = useLoadData();
@@ -38,10 +41,10 @@ function Layout() {
   // Hide header on public routes
   const hideHeader = publicRoutes.includes(location.pathname);
 
-  // ✅ Helper to get default redirect based on role
+  // Helper to get default redirect based on role
   const getDefaultRedirect = () => {
     if (role === "Kitchen") return "/kitchen";
-    // Admin and all other roles go to home
+    if (role === "Waiter") return "/waiter";
     return "/home";
   };
 
@@ -72,6 +75,26 @@ function Layout() {
           element={
             <ProtectedRoutes>
               <More />
+            </ProtectedRoutes>
+          }
+        />
+
+        {/* Waiter Dashboard Route */}
+        <Route
+          path="/waiter"
+          element={
+            <ProtectedRoutes allowedRoles={["Waiter", "Admin"]}>
+              <WaiterDashboard />
+            </ProtectedRoutes>
+          }
+        />
+
+        {/* ✅ NOTIFICATIONS ROUTE - ADD THIS */}
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoutes>
+              <Notifications />
             </ProtectedRoutes>
           }
         />
@@ -169,6 +192,8 @@ function ProtectedRoutes({ children, allowedRoles = [] }) {
     // Redirect based on role
     if (role === "Kitchen") {
       return <Navigate to="/kitchen" replace />;
+    } else if (role === "Waiter") {
+      return <Navigate to="/waiter" replace />;
     } else {
       return <Navigate to="/home" replace />;
     }
@@ -180,9 +205,11 @@ function ProtectedRoutes({ children, allowedRoles = [] }) {
 function App() {
   return (
     <SocketProvider>
-      <Router>
-        <Layout />
-      </Router>
+      <NotificationProvider>
+        <Router>
+          <Layout />
+        </Router>
+      </NotificationProvider>
     </SocketProvider>
   );
 }

@@ -274,23 +274,28 @@ const updateOrder = async (req, res, next) => {
     await order.save();
 
     // Free up table when order is completed
-    const finalStatus = orderStatus || order.orderStatus;
-    if (finalStatus === "Completed") {
-      await Table.findByIdAndUpdate(order.table, {
-        currentOrder: null,
-      });
-    }
+const finalStatus = orderStatus || order.orderStatus;
+if (finalStatus === "Completed") {
+  await Table.findByIdAndUpdate(order.table, {
+    currentOrder: null,
+  });
+}
 
-    // 🚀 EMIT REAL-TIME EVENT - Order status changed
-    if (io) {
-      io.emit("order_updated", order);
-      io.emit("orders_updated");
-      
-      // Specific event for kitchen when order is ready
-      if (orderStatus === "Ready") {
-        io.emit("order_ready", order);
-      }
-    }
+// 🚀 EMIT REAL-TIME EVENT - Order status changed
+if (io) {
+  io.emit("order_updated", order);
+  io.emit("orders_updated");
+  
+  // Specific event for kitchen when order is ready
+  if (orderStatus === "Ready") {
+    io.emit("order_ready", order);
+  }
+  
+  // ✅ ADD THIS: Specific event for when order is completed (payment done)
+  if (orderStatus === "Completed") {
+    io.emit("order_completed", order);
+  }
+}
 
     res.status(200).json({
       success: true,

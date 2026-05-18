@@ -1,9 +1,11 @@
 import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getOrders, updateOrderStatus } from "../../https";
+import { getOrders, getTables, updateOrderStatus } from "../https";
 import { enqueueSnackbar } from "notistack";
-import { useSocket } from "../../context/SocketContext";
-import { FaClock, FaFire, FaCheckCircle, FaCircle } from "react-icons/fa";
+import { useSocket } from "../context/SocketContext";
+import { FaClock, FaFire, FaCheckCircle, FaCircle, FaPlus, FaEye, FaMoneyBillWave } from "react-icons/fa";
 import { MdTableRestaurant } from "react-icons/md";
 
 // ✅ ORDER TIMER HELPER FUNCTIONS
@@ -22,9 +24,6 @@ const getTimerColor = (createdAt) => {
   return 'text-gray-400';
 };
 
-const fmt = (iso) =>
-  new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
 const elapsed = (iso) => {
   const mins = Math.floor((Date.now() - new Date(iso)) / 60000);
   if (mins < 1) return "just now";
@@ -39,10 +38,8 @@ const COLS = [
     color: "text-yellow-400",
     ringColor: "ring-yellow-400/30",
     badgeBg: "bg-yellow-400/10 text-yellow-400",
-    btnLabel: "Start Cooking",
-    btnClass: "bg-yellow-400 hover:bg-yellow-300 text-black",
-    nextStatus: "In Progress",
     dotColor: "bg-yellow-400",
+    action: "view",
   },
   {
     key: "In Progress",
@@ -51,10 +48,8 @@ const COLS = [
     color: "text-orange-400",
     ringColor: "ring-orange-400/30",
     badgeBg: "bg-orange-400/10 text-orange-400",
-    btnLabel: "Mark Ready",
-    btnClass: "bg-green-500 hover:bg-green-400 text-black",
-    nextStatus: "Ready",
     dotColor: "bg-orange-400",
+    action: "view",
   },
   {
     key: "Ready",
@@ -63,37 +58,29 @@ const COLS = [
     color: "text-green-400",
     ringColor: "ring-green-400/30",
     badgeBg: "bg-green-400/10 text-green-400",
-    btnLabel: "Served ✓",
-    btnClass: "bg-green-500/20 text-green-400 cursor-not-allowed",
-    nextStatus: null,
     dotColor: "bg-green-400",
+    action: "bill",
   },
 ];
 
-const Kitchen = () => {
+const WaiterDashboard = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const userData = useSelector((state) => state.user);
   const { socket } = useSocket();
 
   useEffect(() => {
     if (!socket) return;
     const refresh = () => queryClient.invalidateQueries({ queryKey: ["orders"] });
-    const onNew = (order) => {
-      enqueueSnackbar(`New order #${order._id?.slice(-4)}`, {
-        variant: "info", autoHideDuration: 3500,
-      });
-      refresh();
-    };
     socket.on("orders_updated", refresh);
-    socket.on("new_order", onNew);
     socket.on("order_updated", refresh);
     return () => {
       socket.off("orders_updated", refresh);
-      socket.off("new_order", onNew);
       socket.off("order_updated", refresh);
     };
   }, [socket, queryClient]);
 
-  const { data: resData, isLoading } = useQuery({
+  const { data: ordersData, isLoading: ordersLoading } = useQuery({
     queryKey: ["orders"],
     queryFn: getOrders,
     refetchOnMount: true,
@@ -101,28 +88,31 @@ const Kitchen = () => {
     staleTime: 5000,
   });
 
-  const mutation = useMutation({
-    mutationFn: ({ orderId, status }) =>
-      updateOrderStatus({ orderId, orderStatus: status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries(["orders"]);
-      enqueueSnackbar("Status updated", { variant: "success" });
-    },
-    onError: () => enqueueSnackbar("Failed to update", { variant: "error" }),
+  const { data: tablesData, isLoading: tablesLoading } = useQuery({
+    queryKey: ["tables"],
+    queryFn: getTables,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    staleTime: 5000,
   });
 
-  const orders = resData?.data?.data || [];
+  const orders = ordersData?.data?.data || [];
+  const tables = tablesData?.data?.data || [];
+
   const grouped = {
     "Pending":     orders.filter((o) => o.orderStatus === "Pending"),
     "In Progress": orders.filter((o) => o.orderStatus === "In Progress"),
     "Ready":       orders.filter((o) => o.orderStatus === "Ready"),
   };
+
+  const occupiedTables = tables.filter((t) => t?.currentOrder).length;
+  const availableTables = tables.filter((t) => !t?.currentOrder).length;
   const totalActive = grouped["Pending"].length + grouped["In Progress"].length;
 
-  if (isLoading) {
+  if (ordersLoading || tablesLoading) {
     return (
       <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
-        <p className="text-gray-500 text-sm">Loading kitchen…</p>
+        <p className="text-gray-500 text-sm">Loading waiter dashboard…</p>
       </div>
     );
   }
@@ -134,12 +124,14 @@ const Kitchen = () => {
       <div className="flex-shrink-0 flex items-center justify-between
                       px-6 py-3 bg-[#141414] border-b border-[#222]">
         <div className="flex items-center gap-2.5">
-          <span className="text-xl">👨‍🍳</span>
+          <span className="text-xl">🛎️</span>
           <div>
             <p className="text-white font-bold text-xl leading-tight">
-              Kitchen Display
+              Waiter Dashboard
             </p>
-            <p className="text-gray-400 text-[15px]">Live order queue</p>
+            <p className="text-gray-400 text-[15px]">
+              {userData.name?.split(" ")[0] || "Waiter"}
+            </p>
           </div>
         </div>
 
@@ -153,6 +145,12 @@ const Kitchen = () => {
                 </span>
               </div>
             ))}
+            <div className="flex items-center gap-1.5 ml-2">
+              <span className="w-2 h-2 rounded-full bg-blue-400" />
+              <span className="text-gray-400 text-md">
+                {occupiedTables} / {occupiedTables + availableTables} tables
+              </span>
+            </div>
           </div>
 
           {totalActive > 0 && (
@@ -163,6 +161,15 @@ const Kitchen = () => {
               {totalActive} active
             </span>
           )}
+
+          <button
+            onClick={() => navigate("/tables")}
+            className="flex items-center gap-1.5 bg-yellow-400 hover:bg-yellow-300
+                       text-black text-xs font-bold px-3 py-1.5 rounded-lg
+                       transition-all duration-150"
+          >
+            <FaPlus size={9} /> New Order
+          </button>
         </div>
       </div>
 
@@ -195,7 +202,7 @@ const Kitchen = () => {
               </div>
 
               {/* Cards */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-3">
+              <div className="flex-1 overflow-y-auto p-3 space-y-3 pb-24">
                 {colOrders.length === 0 ? (
                   <div className="flex flex-col items-center justify-center
                                   h-32 rounded-xl border border-dashed border-[#252525]">
@@ -248,7 +255,7 @@ const Kitchen = () => {
 
                         {/* Items */}
                         <div className="space-y-1 mb-3">
-                          {order.items?.map((item, i) => (
+                          {order.items?.slice(0, 3).map((item, i) => (
                             <div
                               key={i}
                               className="flex items-center justify-between
@@ -262,30 +269,51 @@ const Kitchen = () => {
                               </span>
                             </div>
                           ))}
+                          {order.items?.length > 3 && (
+                            <p className="text-gray-600 text-[10px] text-center pt-1">
+                              +{order.items.length - 3} more items
+                            </p>
+                          )}
                         </div>
 
-                        {/* Action button */}
-                        {col.nextStatus ? (
-                          <button
-                            onClick={() =>
-                              mutation.mutate({
-                                orderId: order._id,
-                                status: col.nextStatus,
-                              })
-                            }
-                            disabled={mutation.isPending}
-                            className={`w-full py-2 rounded-lg text-xs font-bold
-                                        transition-all duration-150 disabled:opacity-50
-                                        ${col.btnClass}`}
-                          >
-                            {col.btnLabel}
-                          </button>
-                        ) : (
-                          <div className={`w-full py-2 rounded-lg text-xs font-bold
-                                          text-center ${col.btnClass}`}>
-                            {col.btnLabel}
+                        {/* Total for Ready column */}
+                        {col.key === "Ready" && order.bills?.totalWithTax && (
+                          <div className="flex items-center justify-between
+                                          bg-green-500/5 border border-green-500/15
+                                          rounded-lg px-2.5 py-1.5 mb-3">
+                            <span className="text-gray-500 text-[10px]">Total</span>
+                            <span className="text-green-400 font-bold text-xs">
+                              ₹{order.bills.totalWithTax.toFixed(2)}
+                            </span>
                           </div>
                         )}
+
+                        {/* Action buttons */}
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => navigate(`/orders/${order._id}`)}
+                            className="flex-1 flex items-center justify-center gap-1
+                                       bg-[#222] hover:bg-[#2a2a2a]
+                                       border border-[#2e2e2e] hover:border-[#383838]
+                                       text-gray-400 hover:text-white
+                                       py-1.5 rounded-lg text-[10px] font-semibold
+                                       transition-all duration-150"
+                          >
+                            <FaEye size={9} /> View
+                          </button>
+
+                          {col.key === "Ready" && (
+                            <button
+                              onClick={() => navigate(`/orders/${order._id}`)}
+                              className="flex-1 flex items-center justify-center gap-1
+                                         bg-green-600 hover:bg-green-500 text-white
+                                         py-1.5 rounded-lg text-[10px] font-semibold
+                                         transition-all duration-150"
+                            >
+                              <FaMoneyBillWave size={9} /> Bill
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))
@@ -299,4 +327,4 @@ const Kitchen = () => {
   );
 };
 
-export default Kitchen;
+export default WaiterDashboard;

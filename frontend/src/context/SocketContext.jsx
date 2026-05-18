@@ -17,7 +17,7 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     // Connect to backend server
-   const SOCKET_URL = import.meta.env.VITE_API_URL";
+   const SOCKET_URL = import.meta.env.VITE_API_URL;
 
 const newSocket = io(SOCKET_URL, {
   withCredentials: true,

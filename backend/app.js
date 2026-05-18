@@ -8,6 +8,7 @@ const cookieParser = require("cookie-parser");
 const cors = require("cors");
 
 const app = express();
+app.set("trust proxy", 1);
 const server = http.createServer(app);
 const PORT = process.env.PORT || 8000;
 

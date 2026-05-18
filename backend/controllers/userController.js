@@ -95,11 +95,11 @@ const login = async (req, res, next) => {
 
         // Cookie (fixed for localhost)
         res.cookie("accessToken", accessToken, {
-            maxAge: 1000 * 60 * 60 * 24 * 30,
-            httpOnly: true,
-            sameSite: "lax",
-            secure: false
-        });
+    maxAge: 1000 * 60 * 60 * 24 * 30,
+    httpOnly: true,
+    sameSite: "none",
+    secure: true
+});
 
         const userResponse = user.toObject();
         delete userResponse.password;
@@ -152,10 +152,10 @@ const logout = async (req, res, next) => {
     try {
 
         res.clearCookie("accessToken", {
-            httpOnly: true,
-            sameSite: "lax",
-            secure: false
-        });
+    httpOnly: true,
+    sameSite: "none",
+    secure: true
+});
 
         res.status(200).json({
             success: true,

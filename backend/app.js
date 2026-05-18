@@ -9,30 +9,37 @@ const cors = require("cors");
 
 const app = express();
 const server = http.createServer(app);
-const PORT = config.port;
+const PORT = process.env.PORT || 8000;
+
+// Allow multiple origins for CORS
+const allowedOrigins = [
+    "http://localhost:5173",
+    "https://dineflow-frontend.vercel.app",
+    process.env.FRONTEND_URL
+].filter(Boolean);
 
 // Socket.io setup
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     credentials: true,
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
   },
+  transports: ["websocket", "polling"],
 });
 
 connectDB();
 
-// ✅ IMPORTANT: Pass io to orderController
+// Pass io to orderController
 const orderController = require("./controllers/orderController");
 orderController.setIo(io);
 
-// Make io available in routes (optional, for other routes)
 app.set("io", io);
 
-// CORS
+// CORS middleware
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
   })
@@ -42,7 +49,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.get("/", (req, res) => {
-  res.json({ message: "Hello from POS Server!" });
+  res.json({ message: "DineFlow API is running!" });
 });
 
 app.use("/api/user", require("./routes/userRoute"));
@@ -53,16 +60,14 @@ app.use("/api/category", require("./routes/categoryRoutes"));
 
 app.use(globalErrorHandler);
 
-// Socket.io connection
 io.on("connection", (socket) => {
-  console.log("New client connected:", socket.id);
-
+  console.log("🔌 New client connected:", socket.id);
   socket.on("disconnect", () => {
-    console.log("Client disconnected:", socket.id);
+    console.log("🔌 Client disconnected:", socket.id);
   });
 });
 
 server.listen(PORT, () => {
-  console.log(`☑️ POS Server is listening on port ${PORT}`);
+  console.log(`☑️ Server is listening on port ${PORT}`);
   console.log(`☑️ Socket.io is ready`);
 });
